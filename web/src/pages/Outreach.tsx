@@ -115,34 +115,32 @@ export default function Outreach() {
         <div className="space-y-2">
           {filtered.map(c => (
             <Card key={c.id} className="!p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="truncate text-sm font-medium">{c.name}</div>
-                    {c.do_not_call ? <Badge tone="red">DNC</Badge> : null}
-                  </div>
-                  <div className="text-xs text-slate-400">{c.phone}</div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="truncate text-sm font-medium">{c.name}</div>
+                  {c.do_not_call ? <Badge tone="red">DNC</Badge> : null}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <a
-                    href={`tel:${c.phone}`}
-                    onClick={e => { if (c.do_not_call) e.preventDefault() }}
-                    className={`inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
-                    title="Dial from this phone's SIM"
-                  >📲 Dial</a>
-                  <button
-                    onClick={() => onWhatsApp(c)}
-                    disabled={busy === c.id || !!c.do_not_call}
-                    className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                  >🟢 WA</button>
-                  <button
-                    onClick={() => onSMS(c)}
-                    disabled={busy === c.id || !!c.do_not_call}
-                    className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-                  >💬 SMS</button>
-                  <Button variant="ghost" onClick={() => onShare(c)} disabled={busy === c.id}>Share</Button>
-                  <Button variant="ghost" onClick={() => onCopy(c)} disabled={busy === c.id}>Copy</Button>
-                </div>
+                <div className="truncate text-xs text-slate-400">{c.phone}</div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <a
+                  href={`tel:${c.phone}`}
+                  onClick={e => { if (c.do_not_call) e.preventDefault() }}
+                  className={`inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
+                  title="Dial from this phone's SIM"
+                >📲 Dial</a>
+                <button
+                  onClick={() => onWhatsApp(c)}
+                  disabled={busy === c.id || !!c.do_not_call}
+                  className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >🟢 WA</button>
+                <button
+                  onClick={() => onSMS(c)}
+                  disabled={busy === c.id || !!c.do_not_call}
+                  className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                >💬 SMS</button>
+                <Button variant="ghost" onClick={() => onShare(c)} disabled={busy === c.id} className="!px-2.5 !py-1.5 !text-xs">Share</Button>
+                <Button variant="ghost" onClick={() => onCopy(c)} disabled={busy === c.id} className="!px-2.5 !py-1.5 !text-xs">Copy</Button>
               </div>
             </Card>
           ))}

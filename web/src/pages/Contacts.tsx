@@ -149,7 +149,6 @@ export default function Contacts() {
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={busy}>{editing ? 'Save' : 'Add contact'}</Button>
             {editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm({ name: '', phone: '', notes: '' }) }}>Cancel</Button>}
-            <div className="flex-1" />
             <input ref={fileRef} type="file" accept=".csv" hidden onChange={onUpload} />
             <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>Import CSV</Button>
             <Button variant="ghost" onClick={onSeed} disabled={busy}>Seed</Button>
@@ -166,32 +165,30 @@ export default function Contacts() {
         <div className="space-y-2">
           {filtered.map(c => (
             <Card key={c.id} className="!p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="truncate text-sm font-medium">{c.name}</div>
-                    {c.do_not_call ? <Badge tone="red">DNC</Badge> : null}
-                  </div>
-                  <div className="text-xs text-slate-400">{c.phone}</div>
-                  {c.notes && <div className="mt-1 text-xs text-slate-500">{c.notes}</div>}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="truncate text-sm font-medium">{c.name}</div>
+                  {c.do_not_call ? <Badge tone="red">DNC</Badge> : null}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <a
-                    href={`tel:${c.phone}`}
-                    onClick={e => { if (c.do_not_call) e.preventDefault() }}
-                    className={`inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
-                    title="Dial from this phone's SIM (you talk)"
-                  >📲 Dial</a>
-                  <Button
-                    variant="primary"
-                    onClick={() => onCall(c)}
-                    disabled={!!c.do_not_call || online === false}
-                    className="!px-2"
-                  >🤖 AI</Button>
-                  <Button variant="ghost" onClick={() => onToggleDnc(c)}>{c.do_not_call ? 'Un-DNC' : 'DNC'}</Button>
-                  <Button variant="ghost" onClick={() => { setEditing(c); setForm({ name: c.name, phone: c.phone, notes: c.notes }) }}>Edit</Button>
-                  <Button variant="danger" onClick={() => onDelete(c.id)}>×</Button>
-                </div>
+                <div className="truncate text-xs text-slate-400">{c.phone}</div>
+                {c.notes && <div className="mt-1 truncate text-xs text-slate-500">{c.notes}</div>}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <a
+                  href={`tel:${c.phone}`}
+                  onClick={e => { if (c.do_not_call) e.preventDefault() }}
+                  className={`inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
+                  title="Dial from this phone's SIM (you talk)"
+                >📲 Dial</a>
+                <Button
+                  variant="primary"
+                  onClick={() => onCall(c)}
+                  disabled={!!c.do_not_call || online === false}
+                  className="!px-2.5 !py-1.5 !text-xs"
+                >🤖 AI</Button>
+                <Button variant="ghost" onClick={() => onToggleDnc(c)} className="!px-2.5 !py-1.5 !text-xs">{c.do_not_call ? 'Un-DNC' : 'DNC'}</Button>
+                <Button variant="ghost" onClick={() => { setEditing(c); setForm({ name: c.name, phone: c.phone, notes: c.notes }) }} className="!px-2.5 !py-1.5 !text-xs">Edit</Button>
+                <Button variant="danger" onClick={() => onDelete(c.id)} className="!px-2.5 !py-1.5 !text-xs">×</Button>
               </div>
             </Card>
           ))}
