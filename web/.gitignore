@@ -6,5 +6,5 @@ dist-ssr
 .vite
 *.local
 .vercel
-
-.vercel
+tsconfig.tsbuildinfo
+*.tsbuildinfo
