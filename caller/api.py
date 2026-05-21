@@ -35,7 +35,7 @@ from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
 
 import config
-from caller import db
+from caller import brain, db
 
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -102,7 +102,39 @@ def health() -> dict:
         "twilio_configured": bool(config.TWILIO_ACCOUNT_SID and config.TWILIO_AUTH_TOKEN),
         "anthropic_configured": bool(config.ANTHROPIC_API_KEY),
         "public_url": config.PUBLIC_URL,
+        "agent": brain.backend_info(),
     }
+
+
+# ---------------------------- agent chat (text) ---------------------------
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = []
+    student_name: str = "there"
+    user_said: str | None = None
+
+
+@router.post("/agent/chat")
+def agent_chat(payload: ChatRequest) -> dict:
+    """Stateless text chat with the same agent that runs the phone calls.
+    Useful for prompt-tuning without spending phone minutes."""
+    history = [{"role": m.role, "content": m.content} for m in payload.messages]
+    user_said = payload.user_said
+    if user_said is None and history:
+        last = history[-1]
+        if last["role"] == "user":
+            user_said = last["content"]
+            history = history[:-1]
+    try:
+        result = brain.next_line(payload.student_name or "there", history, user_said)
+    except Exception as e:
+        raise HTTPException(502, f"agent error: {e}")
+    return result
 
 
 # ---------------------------- contacts -------------------------------------

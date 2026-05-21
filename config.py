@@ -17,9 +17,17 @@ def _req(key: str) -> str:
     return val
 
 
+# --- Agent backend selector ---
+# "anthropic" -> Claude API, "ollama" -> local Ollama (no API cost, runs offline)
+AGENT_BACKEND = os.getenv("AGENT_BACKEND", "anthropic").lower()
+
 # --- Anthropic ---
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+
+# --- Ollama (local LLM) ---
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
 # --- Twilio ---
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")

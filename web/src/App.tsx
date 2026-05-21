@@ -5,11 +5,13 @@ import Campaigns from './pages/Campaigns'
 import Calls from './pages/Calls'
 import CallDetail from './pages/CallDetail'
 import Results from './pages/Results'
+import Chat from './pages/Chat'
 
 const tabs = [
   { to: '/', label: 'Home', icon: '🏠' },
   { to: '/contacts', label: 'Contacts', icon: '👥' },
   { to: '/campaigns', label: 'Campaigns', icon: '📣' },
+  { to: '/chat', label: 'Chat', icon: '💬' },
   { to: '/calls', label: 'Calls', icon: '📞' },
   { to: '/results', label: 'Results', icon: '📊' },
 ]
@@ -37,6 +39,7 @@ export default function App() {
           <Route path="/calls" element={<Calls />} />
           <Route path="/calls/:sid" element={<CallDetail />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/chat" element={<Chat />} />
         </Routes>
         <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-[11px] text-slate-500">
           © {new Date().getFullYear()} Rohit Jangra · IITM Call System · All rights reserved
@@ -44,7 +47,7 @@ export default function App() {
       </main>
 
       <nav className="safe-pb fixed inset-x-0 bottom-0 z-10 border-t border-slate-800 bg-slate-950/95 backdrop-blur">
-        <div className="mx-auto grid max-w-3xl grid-cols-5">
+        <div className="mx-auto grid max-w-3xl grid-cols-6">
           {tabs.map(t => (
             <NavLink
               key={t.to}

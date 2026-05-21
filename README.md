@@ -128,6 +128,51 @@ provider before running a live campaign. Always:
 
 This repository is a technical base, not legal advice.
 
+## Local AI brain (Ollama) — avoid Anthropic API costs
+
+Set `AGENT_BACKEND=ollama` in `.env` and the system uses a model running on
+your own laptop instead of Claude. Same conversation logic, no API key needed.
+
+```bash
+# 1) install ollama (Windows installer): https://ollama.com/download
+# 2) pull a model — llama3.1:8b is a good default on most GPUs
+ollama pull llama3.1:8b
+# (for low-RAM machines: try gemma2:2b or qwen2.5:3b)
+
+# 3) confirm Ollama is serving
+curl http://localhost:11434/api/tags
+
+# 4) edit .env
+AGENT_BACKEND=ollama
+OLLAMA_MODEL=llama3.1:8b
+
+# 5) restart the backend — that's it.
+```
+
+The Twilio webhooks (`/voice`, `/respond`) automatically use whichever
+backend is selected. The PWA "Chat" tab also uses the same brain, so you
+can prompt-tune the agent locally without spending phone minutes.
+
+**Latency reality**: on a CPU-only laptop, small models (3-4B params) reply
+in 1-3 seconds — usable for phone calls but feels sluggish. With a decent
+GPU (8GB+), an 8B model replies in <1 second. If the model is too slow,
+Twilio may time out the speech gather. Drop to a smaller model in that
+case.
+
+## "Dial from my SIM" button
+
+Each contact has two call buttons:
+
+| Button | What happens | Who talks |
+|---|---|---|
+| 🤖 **AI** | Twilio places the call, the AI agent (Claude or Ollama) handles it | The AI |
+| 📲 **Dial** | Opens your Android dialer with the contact's number prefilled (`tel:+91…`) | You, manually |
+
+Use **Dial** when you don't have Twilio set up yet, when you want to handle
+specific calls personally, or when Twilio trial restrictions are blocking
+the AI path. The 📲 button uses your phone's own SIM and your normal call
+plan.
+
 ## React PWA dashboard (`web/`)
 
 A mobile-first React + Vite PWA lives in `web/` and talks to the FastAPI

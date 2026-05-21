@@ -57,4 +57,17 @@ export interface Health {
   twilio_configured: boolean
   anthropic_configured: boolean
   public_url: string
+  agent: { backend: 'anthropic' | 'ollama'; model: string; url?: string }
+}
+
+export interface AgentTurn {
+  say: string
+  sentiment: string
+  note: string
+  end_call: boolean
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
 }

@@ -1,5 +1,5 @@
 import type {
-  CallRow, CampaignState, Contact, Health, Summary, TranscriptTurn,
+  AgentTurn, CallRow, CampaignState, ChatMessage, Contact, Health, Summary, TranscriptTurn,
 } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
@@ -68,4 +68,11 @@ export const api = {
   // results
   summary: () => req<Summary>('/api/results/summary'),
   exportCsvUrl: () => `${BASE}/api/results/export.csv`,
+
+  // agent chat (text)
+  chat: (messages: ChatMessage[], student_name = 'there') =>
+    req<AgentTurn>('/api/agent/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, student_name }),
+    }),
 }

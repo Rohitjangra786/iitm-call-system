@@ -143,7 +143,13 @@ export default function Contacts() {
                   {c.notes && <div className="mt-1 text-xs text-slate-500">{c.notes}</div>}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <Button variant="primary" onClick={() => onCall(c)} disabled={!!c.do_not_call}>Call</Button>
+                  <a
+                    href={`tel:${c.phone}`}
+                    onClick={e => { if (c.do_not_call) e.preventDefault() }}
+                    className={`inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
+                    title="Dial from this phone's SIM (you talk)"
+                  >📲 Dial</a>
+                  <Button variant="primary" onClick={() => onCall(c)} disabled={!!c.do_not_call} className="!px-2">🤖 AI</Button>
                   <Button variant="ghost" onClick={() => onToggleDnc(c)}>{c.do_not_call ? 'Un-DNC' : 'DNC'}</Button>
                   <Button variant="ghost" onClick={() => { setEditing(c); setForm({ name: c.name, phone: c.phone, notes: c.notes }) }}>Edit</Button>
                   <Button variant="danger" onClick={() => onDelete(c.id)}>×</Button>
