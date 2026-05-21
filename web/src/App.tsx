@@ -11,7 +11,7 @@ const tabs = [
   { to: '/', label: 'Home', icon: '🏠' },
   { to: '/contacts', label: 'Contacts', icon: '👥' },
   { to: '/campaigns', label: 'Campaigns', icon: '📣' },
-  { to: '/chat', label: 'Chat', icon: '💬' },
+  { to: '/chat', label: 'Agent', icon: '🎙️' },
   { to: '/calls', label: 'Calls', icon: '📞' },
   { to: '/results', label: 'Results', icon: '📊' },
 ]
