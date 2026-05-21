@@ -8,9 +8,13 @@ import type { Health } from '../types'
 export default function Dashboard() {
   const snap = useStream()
   const [health, setHealth] = useState<Health | null>(null)
+  const [online, setOnline] = useState<boolean | null>(null)
+  const [contactCount, setContactCount] = useState(0)
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null))
+    api.isOnline().then(setOnline)
+    api.contacts().then(cs => setContactCount(cs.length)).catch(() => {})
   }, [])
 
   const summary = snap?.summary
@@ -18,9 +22,22 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <H1>Dashboard</H1>
+      <div className="flex items-center justify-between gap-2">
+        <H1>Dashboard</H1>
+        {online === false && <Badge tone="amber">Offline mode</Badge>}
+      </div>
 
-      {health && (!health.twilio_configured || !health.anthropic_configured) && (
+      {online === false && (
+        <Card className="border-amber-700/40 bg-amber-900/10 text-sm">
+          <div className="mb-1 font-medium text-amber-200">Backend offline</div>
+          <ul className="list-disc pl-5 text-xs text-amber-100/70">
+            <li><strong>Works now:</strong> Contacts, CSV import/export, 📲 Dial, 🟢 WhatsApp, 💬 SMS, Share/Copy talk link</li>
+            <li><strong>Needs backend:</strong> 🤖 AI calls (Twilio), live campaigns, agent chat, call transcripts</li>
+          </ul>
+        </Card>
+      )}
+
+      {online && health && (!health.twilio_configured || !health.anthropic_configured) && (
         <Card className="border-amber-700/60 bg-amber-900/20">
           <div className="text-sm">
             <div className="mb-1 font-medium text-amber-300">Setup incomplete</div>
@@ -33,19 +50,24 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Contacts" value={contactCount} />
         <Stat label="Total calls" value={summary?.total ?? 0} />
         <Stat label="Active" value={summary?.active ?? 0} tone="blue" />
-        <Stat label="Completed" value={summary?.completed ?? 0} tone="green" />
         <Stat label="Interested" value={summary?.buckets?.['Interested'] ?? 0} tone="green" />
       </div>
 
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-200">Active calls</h2>
-          <span className="text-xs text-slate-500">live · SSE</span>
+          {online !== false && <span className="text-xs text-slate-500">live · SSE</span>}
         </div>
         {active.length === 0 ? (
-          <Empty title="No calls in progress" hint="Start a campaign or place a single call." />
+          <Empty
+            title={online === false ? 'No live call feed offline' : 'No calls in progress'}
+            hint={online === false
+              ? 'Use Outreach to send each contact a WhatsApp link instead.'
+              : 'Start a campaign or place a single call.'}
+          />
         ) : (
           <div className="space-y-2">
             {active.map(c => (

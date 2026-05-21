@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, OfflineError } from '../api'
 import type { Summary } from '../types'
-import { Button, Card, Empty, H1 } from '../components/ui'
+import { Badge, Button, Card, Empty, H1 } from '../components/ui'
 
 export default function Results() {
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
-    api.summary().then(setSummary).catch(() => setSummary(null))
-    const t = setInterval(() => api.summary().then(setSummary).catch(() => {}), 5000)
+    const load = () =>
+      api.summary()
+        .then(s => { setSummary(s); setOffline(false) })
+        .catch(e => {
+          if (e instanceof OfflineError) { setSummary(null); setOffline(true) }
+        })
+    load()
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [])
 
@@ -16,13 +23,25 @@ export default function Results() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <H1>Results</H1>
-        <a href={api.exportCsvUrl()} download>
-          <Button variant="secondary">Export CSV</Button>
-        </a>
+        <div className="flex items-center gap-2">
+          {offline && <Badge tone="amber">Offline</Badge>}
+          {!offline && (
+            <a href={api.exportCsvUrl()} download>
+              <Button variant="secondary">Export CSV</Button>
+            </a>
+          )}
+        </div>
       </div>
 
+      {offline && (
+        <Card className="border-amber-700/40 bg-amber-900/10 text-xs text-amber-100/80">
+          Call outcomes are stored in the backend's <code>calls.db</code>. Start the Python
+          server to see them. You can still export your contact list from the Contacts tab.
+        </Card>
+      )}
+
       {!summary || summary.total === 0 ? (
-        <Empty title="No results yet" hint="Results appear here as calls complete." />
+        <Empty title="No results yet" hint={offline ? undefined : 'Results appear here as calls complete.'} />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3">

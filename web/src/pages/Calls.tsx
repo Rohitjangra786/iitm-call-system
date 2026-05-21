@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, OfflineError } from '../api'
 import type { CallRow } from '../types'
 import { Badge, Card, Empty, H1, Input } from '../components/ui'
 
@@ -13,10 +13,17 @@ const tone = (r: CallRow) =>
 export default function Calls() {
   const [items, setItems] = useState<CallRow[]>([])
   const [filter, setFilter] = useState('')
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
-    api.calls().then(setItems).catch(() => setItems([]))
-    const t = setInterval(() => { api.calls().then(setItems).catch(() => {}) }, 5000)
+    const load = () =>
+      api.calls()
+        .then(rows => { setItems(rows); setOffline(false) })
+        .catch(e => {
+          if (e instanceof OfflineError) { setItems([]); setOffline(true) }
+        })
+    load()
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [])
 
@@ -29,11 +36,22 @@ export default function Calls() {
 
   return (
     <div className="space-y-4">
-      <H1>Calls</H1>
+      <div className="flex items-center justify-between gap-2">
+        <H1>Calls</H1>
+        {offline && <Badge tone="amber">Offline</Badge>}
+      </div>
+
+      {offline && (
+        <Card className="border-amber-700/40 bg-amber-900/10 text-xs text-amber-100/80">
+          Call history lives on the backend (Twilio + transcripts). Start the Python server
+          to see it. In the meantime, use 📲 Dial or 🟢 WA / 💬 SMS on the Outreach tab.
+        </Card>
+      )}
+
       <Input placeholder="Search by name, phone, or remark" value={filter} onChange={e => setFilter(e.target.value)} />
 
       {filtered.length === 0 ? (
-        <Empty title="No calls yet" hint="Place a single call from Contacts, or start a campaign." />
+        <Empty title={offline ? 'No call history offline' : 'No calls yet'} hint={offline ? undefined : 'Place a single call from Contacts, or start a campaign.'} />
       ) : (
         <div className="space-y-2">
           {filtered.map(r => (

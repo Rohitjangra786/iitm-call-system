@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/icon.svg'],
+      includeAssets: ['favicon.svg', 'icons/icon.svg', 'contacts.csv'],
       manifest: {
         name: 'SiksaSarovar',
         short_name: 'SiksaSarovar',
@@ -25,7 +25,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webp,csv}'],
         // Replace the previous SW immediately and take over open tabs so a new
         // deploy can't leave a phone stuck on stale asset URLs that 404.
         clientsClaim: true,

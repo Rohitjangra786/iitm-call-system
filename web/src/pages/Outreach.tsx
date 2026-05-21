@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, buildTalkLink } from '../api'
 import type { Contact } from '../types'
 import { Badge, Button, Card, Empty, H1, Input } from '../components/ui'
 
@@ -19,37 +19,33 @@ export default function Outreach() {
     c.phone.includes(filter),
   )
 
-  const buildLink = async (c: Contact) => {
-    return api.makeTalkLink(c.id, baseUrl)
-  }
+  const cleanPhone = (phone: string) =>
+    phone.replace(/[^\d+]/g, '').replace(/^\+/, '')
 
-  const onWhatsApp = async (c: Contact) => {
+  const onWhatsApp = (c: Contact) => {
     setBusy(c.id)
     try {
-      const r = await buildLink(c)
+      const r = buildTalkLink(c, baseUrl)
       const text = `${r.wa_text} ${r.url}`
-      const cleanPhone = c.phone.replace(/[^\d+]/g, '').replace(/^\+/, '')
-      const wa = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      const wa = `https://wa.me/${cleanPhone(c.phone)}?text=${encodeURIComponent(text)}`
       window.open(wa, '_blank')
-    } catch (e: any) { alert(e.message) }
-    finally { setBusy(null) }
+    } finally { setBusy(null) }
   }
 
-  const onSMS = async (c: Contact) => {
+  const onSMS = (c: Contact) => {
     setBusy(c.id)
     try {
-      const r = await buildLink(c)
+      const r = buildTalkLink(c, baseUrl)
       const text = `${r.wa_text} ${r.url}`
       const sms = `sms:${c.phone}?body=${encodeURIComponent(text)}`
       window.location.href = sms
-    } catch (e: any) { alert(e.message) }
-    finally { setBusy(null) }
+    } finally { setBusy(null) }
   }
 
   const onCopy = async (c: Contact) => {
     setBusy(c.id)
     try {
-      const r = await buildLink(c)
+      const r = buildTalkLink(c, baseUrl)
       await navigator.clipboard.writeText(r.url)
       alert(`Link copied:\n${r.url}`)
     } catch (e: any) { alert(e.message) }
@@ -59,7 +55,7 @@ export default function Outreach() {
   const onShare = async (c: Contact) => {
     setBusy(c.id)
     try {
-      const r = await buildLink(c)
+      const r = buildTalkLink(c, baseUrl)
       if (navigator.share) {
         await navigator.share({
           title: 'IITM admissions',
@@ -70,7 +66,7 @@ export default function Outreach() {
         await navigator.clipboard.writeText(`${r.wa_text} ${r.url}`)
         alert('Native share unavailable — message copied instead')
       }
-    } catch (e: any) { /* user cancelled */ }
+    } catch { /* user cancelled */ }
     finally { setBusy(null) }
   }
 
@@ -82,6 +78,9 @@ export default function Outreach() {
         Send a personalized voice-call link to each contact via WhatsApp or SMS. When they
         tap the link, they get a full-screen voice chat with Anya (the IITM agent). No phone
         charges to you — and the conversation shows up in the Calls tab automatically.
+        <div className="mt-2 text-xs text-emerald-200/60">
+          Links open the WhatsApp / SMS / phone app on this device — works fully offline.
+        </div>
       </Card>
 
       <Input placeholder="Search by name or phone" value={filter} onChange={e => setFilter(e.target.value)} />
@@ -101,6 +100,12 @@ export default function Outreach() {
                   <div className="text-xs text-slate-400">{c.phone}</div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
+                  <a
+                    href={`tel:${c.phone}`}
+                    onClick={e => { if (c.do_not_call) e.preventDefault() }}
+                    className={`inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 ${c.do_not_call ? 'cursor-not-allowed opacity-50' : ''}`}
+                    title="Dial from this phone's SIM"
+                  >📲 Dial</a>
                   <button
                     onClick={() => onWhatsApp(c)}
                     disabled={busy === c.id || !!c.do_not_call}
