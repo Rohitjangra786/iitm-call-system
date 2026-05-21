@@ -92,12 +92,13 @@ def _ollama_call(student_name: str, messages: list[dict]) -> str:
             *messages,
         ],
         "temperature": 0.4,
-        "max_tokens": 400,
-        # Hint the model to emit JSON. Ollama honours `format: "json"`.
+        "max_tokens": 250,
         "response_format": {"type": "json_object"},
     }
-    # 60s timeout: small models on CPU can take 5-30s for first token.
-    with httpx.Client(timeout=60.0) as c:
+    # 5 minute timeout: an 8B model on CPU can take 30-120s for 250 tokens
+    # of structured JSON. (For live Twilio calls this is too slow — but the
+    # PWA chat tab is fine. With a GPU, expect <5s.)
+    with httpx.Client(timeout=300.0) as c:
         r = c.post(f"{config.OLLAMA_URL}/v1/chat/completions", json=payload)
         r.raise_for_status()
         data = r.json()
