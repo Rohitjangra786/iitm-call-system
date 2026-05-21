@@ -1,5 +1,7 @@
 # IITM Automated Call System
 
+> © Rohit Jangra · Built and maintained by **Rohit Jangra**
+
 An outbound voice-calling system for IITM BCA / CET admissions follow-up.
 A CLI launches calling campaigns from a contacts list; each call is handled by
 an AI agent (Claude) that talks to the student over the phone, answers questions
@@ -125,6 +127,41 @@ provider before running a live campaign. Always:
 - keep calls within daytime hours.
 
 This repository is a technical base, not legal advice.
+
+## React PWA dashboard (`web/`)
+
+A mobile-first React + Vite PWA lives in `web/` and talks to the FastAPI
+backend's `/api/*` routes. It supports contacts CRUD, CSV upload, single
+calls, campaigns (with live progress via SSE), call history with transcript,
+and a results dashboard. Installable on Android via Chrome → "Add to home
+screen".
+
+```bash
+# 1) start the Python backend
+python cli.py serve                       # -> http://localhost:8000
+
+# 2) start the PWA (separate terminal)
+cd web
+npm install
+npm run dev                               # -> http://localhost:5173
+```
+
+The Vite dev server proxies `/api` to `localhost:8000` automatically.
+
+### Deploying
+
+- **Frontend (Vercel)** — `cd web && vercel --prod`. Set the env var
+  `VITE_API_BASE` in the Vercel project to your backend's public HTTPS URL
+  (e.g. `https://iitm-call-backend.onrender.com`). Currently deployed at
+  `https://iitm-call-pwa.vercel.app`.
+- **Backend (Render / Railway / Fly / VPS)** — the included `Dockerfile`
+  and `render.yaml` work out of the box. Vercel **cannot** host this
+  backend: SQLite needs a writable filesystem, campaigns run as long-lived
+  background tasks, and `/api/stream` keeps an SSE connection open — none
+  of which fit Vercel serverless functions.
+- After the backend has a public URL, set Twilio's webhook to it
+  (`PUBLIC_URL` in `.env` on the backend, **and** redeploy the PWA after
+  setting `VITE_API_BASE`).
 
 ## Upgrade path (later)
 

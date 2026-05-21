@@ -1,5 +1,7 @@
 """FastAPI webhook server.
 
+Copyright (c) 2026 Rohit Jangra. All rights reserved.
+
 Twilio calls these endpoints during a live phone call:
   POST /voice    -> first contact; returns the opening line
   POST /respond  -> after the student speaks; returns the agent's reply
@@ -8,13 +10,24 @@ Twilio calls these endpoints during a live phone call:
 Each response is TwiML (XML) telling Twilio what to say and to listen next.
 """
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Gather
 
 import config
-from caller import db, brain
+from caller import db, brain, api as api_router
 from iitm_facts import SENTIMENTS
 
 app = FastAPI(title="IITM Call System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(api_router.router)
 db.init_db()
 
 

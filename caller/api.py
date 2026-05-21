@@ -1,0 +1,366 @@
+"""JSON REST API consumed by the React PWA.
+
+Copyright (c) 2026 Rohit Jangra. All rights reserved.
+
+Mounted under /api by caller/server.py. Endpoints:
+  GET    /api/health
+  GET    /api/contacts
+  POST   /api/contacts
+  PUT    /api/contacts/{id}
+  DELETE /api/contacts/{id}
+  POST   /api/contacts/upload          (multipart CSV upload)
+  POST   /api/contacts/seed-from-csv   (seed from data/contacts.csv on disk)
+  GET    /api/calls
+  GET    /api/calls/{call_sid}         (with transcript)
+  POST   /api/calls                    (place a single call)
+  POST   /api/campaigns                (start a background campaign)
+  GET    /api/campaigns
+  GET    /api/campaigns/{id}
+  GET    /api/results/summary
+  GET    /api/results/export.csv
+  GET    /api/stream                   (Server-Sent Events: dashboard updates)
+"""
+from __future__ import annotations
+
+import asyncio
+import csv
+import io
+import json
+import time
+import uuid
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse, Response
+from pydantic import BaseModel, Field
+
+import config
+from caller import db
+
+
+router = APIRouter(prefix="/api", tags=["api"])
+
+# Active campaigns kept in-process. Survives only while the server is running.
+_CAMPAIGNS: dict[str, dict[str, Any]] = {}
+
+
+# ---------------------------- helpers --------------------------------------
+
+def _norm_phone(raw: str) -> str:
+    """Normalise an Indian number to E.164 (+91XXXXXXXXXX)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    digits = "".join(c for c in raw if c.isdigit())
+    if raw.startswith("+") and len(digits) >= 10:
+        return "+" + digits
+    if len(digits) == 10:
+        return "+91" + digits
+    if len(digits) == 12 and digits.startswith("91"):
+        return "+" + digits
+    if len(digits) == 11 and digits.startswith("0"):
+        return "+91" + digits[1:]
+    return "+" + digits if digits else ""
+
+
+# ---------------------------- schemas --------------------------------------
+
+class ContactIn(BaseModel):
+    name: str
+    phone: str
+    notes: str = ""
+    do_not_call: bool = False
+
+
+class ContactPatch(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    notes: str | None = None
+    do_not_call: bool | None = None
+
+
+class CallRequest(BaseModel):
+    phone: str
+    name: str = "there"
+    contact_id: str = ""
+
+
+class CampaignRequest(BaseModel):
+    contact_ids: list[int] | None = None
+    limit: int = 0
+    delay_seconds: int = Field(default=45, ge=5, le=600)
+    skip_done: bool = True
+
+
+# ---------------------------- health ---------------------------------------
+
+@router.get("/health")
+def health() -> dict:
+    return {
+        "ok": True,
+        "service": "iitm-call-system",
+        "twilio_configured": bool(config.TWILIO_ACCOUNT_SID and config.TWILIO_AUTH_TOKEN),
+        "anthropic_configured": bool(config.ANTHROPIC_API_KEY),
+        "public_url": config.PUBLIC_URL,
+    }
+
+
+# ---------------------------- contacts -------------------------------------
+
+@router.get("/contacts")
+def list_contacts() -> list[dict]:
+    return db.list_contacts()
+
+
+@router.post("/contacts", status_code=201)
+def create_contact(payload: ContactIn) -> dict:
+    phone = _norm_phone(payload.phone)
+    if not phone:
+        raise HTTPException(400, "phone is required")
+    return db.create_contact(payload.name.strip(), phone, payload.notes, payload.do_not_call)
+
+
+@router.put("/contacts/{contact_id}")
+def update_contact(contact_id: int, payload: ContactPatch) -> dict:
+    existing = db.get_contact(contact_id)
+    if not existing:
+        raise HTTPException(404, "contact not found")
+    data = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if "phone" in data:
+        data["phone"] = _norm_phone(data["phone"])
+    return db.update_contact(contact_id, **data)
+
+
+@router.delete("/contacts/{contact_id}", status_code=204)
+def delete_contact(contact_id: int) -> Response:
+    if not db.delete_contact(contact_id):
+        raise HTTPException(404, "contact not found")
+    return Response(status_code=204)
+
+
+@router.post("/contacts/upload")
+async def upload_contacts(file: UploadFile = File(...)) -> dict:
+    """Upload a CSV. Recognised columns (case-insensitive):
+       name | full name, phone | telephone | mobile, notes (optional)."""
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "expected a .csv file")
+    raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    reader = csv.DictReader(io.StringIO(raw))
+    rows: list[dict] = []
+    for r in reader:
+        lower = {(k or "").strip().lower(): (v or "").strip() for k, v in r.items()}
+        name = lower.get("name") or lower.get("full name") or lower.get("student name") or ""
+        phone = (lower.get("phone")
+                 or lower.get("telephone")
+                 or lower.get("telephone no.")
+                 or lower.get("mobile")
+                 or lower.get("contact")
+                 or "")
+        if not name or not phone:
+            continue
+        rows.append({"name": name, "phone": _norm_phone(phone), "notes": lower.get("notes", "")})
+    n = db.upsert_contacts_from_rows(rows)
+    return {"imported": n}
+
+
+@router.post("/contacts/seed-from-csv")
+def seed_from_csv() -> dict:
+    """Seed contacts from the bundled data/contacts.csv on disk (one-shot)."""
+    path = config.DATA_DIR / "contacts.csv"
+    if not path.exists():
+        raise HTTPException(404, f"{path} not found")
+    rows: list[dict] = []
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for r in reader:
+            lower = {(k or "").strip().lower(): (v or "").strip() for k, v in r.items()}
+            name = lower.get("name") or lower.get("full name") or ""
+            phone = (lower.get("phone") or lower.get("telephone no.")
+                     or lower.get("telephone") or lower.get("mobile") or "")
+            if not name or not phone:
+                continue
+            rows.append({"name": name, "phone": _norm_phone(phone), "notes": ""})
+    n = db.upsert_contacts_from_rows(rows)
+    return {"imported": n}
+
+
+# ---------------------------- calls ----------------------------------------
+
+@router.get("/calls")
+def list_calls(limit: int = 100, status: str | None = None) -> list[dict]:
+    rows = db.all_results()
+    if status:
+        rows = [r for r in rows if r.get("status") == status]
+    return rows[:limit]
+
+
+@router.get("/calls/active")
+def calls_active() -> list[dict]:
+    return db.active_calls()
+
+
+@router.get("/calls/{call_sid}")
+def call_detail(call_sid: str) -> dict:
+    call = db.get_call(call_sid)
+    if not call:
+        raise HTTPException(404, "call not found")
+    return {"call": call, "transcript": db.transcript(call_sid)}
+
+
+@router.post("/calls")
+def place_call(payload: CallRequest) -> dict:
+    """Place a single outbound call. Returns the Twilio CallSid."""
+    from caller import dialer
+    phone = _norm_phone(payload.phone)
+    if not phone:
+        raise HTTPException(400, "phone is required")
+    try:
+        sid = dialer.place_call(phone, payload.name or "there", payload.contact_id or "")
+    except Exception as e:
+        raise HTTPException(502, f"dial failed: {e}")
+    return {"call_sid": sid, "phone": phone, "name": payload.name}
+
+
+# ---------------------------- campaigns ------------------------------------
+
+def _run_campaign(camp_id: str, contacts: list[dict], delay: int,
+                  limit: int, skip_done: bool) -> None:
+    """Background campaign runner. Not async — uses time.sleep."""
+    from caller import dialer
+    state = _CAMPAIGNS[camp_id]
+    state["status"] = "running"
+    state["started_at"] = time.time()
+
+    placed = 0
+    for c in contacts:
+        if state.get("cancel"):
+            break
+        if limit and placed >= limit:
+            break
+        cid = str(c["id"])
+        phone = _norm_phone(c["phone"])
+        name = c["name"]
+
+        if skip_done and db.already_called(cid):
+            state["log"].append({"contact_id": cid, "name": name, "phone": phone,
+                                 "result": "skipped (already done)"})
+            continue
+        if c.get("do_not_call"):
+            state["log"].append({"contact_id": cid, "name": name, "phone": phone,
+                                 "result": "skipped (do-not-call)"})
+            continue
+        try:
+            sid = dialer.place_call(phone, name, cid)
+            state["log"].append({"contact_id": cid, "name": name, "phone": phone,
+                                 "result": "placed", "call_sid": sid})
+            placed += 1
+        except Exception as e:
+            state["log"].append({"contact_id": cid, "name": name, "phone": phone,
+                                 "result": f"failed: {e}"})
+        state["placed"] = placed
+
+        # Wait between calls so we don't hammer Twilio / the line stays open.
+        for _ in range(delay):
+            if state.get("cancel"):
+                break
+            time.sleep(1)
+
+    state["status"] = "cancelled" if state.get("cancel") else "done"
+    state["finished_at"] = time.time()
+
+
+@router.post("/campaigns")
+def start_campaign(payload: CampaignRequest, bg: BackgroundTasks) -> dict:
+    """Kick off a campaign in the background. Returns the campaign id."""
+    all_contacts = db.list_contacts()
+    if payload.contact_ids:
+        ids = set(payload.contact_ids)
+        chosen = [c for c in all_contacts if c["id"] in ids]
+    else:
+        chosen = [c for c in all_contacts if not c.get("do_not_call")]
+
+    if not chosen:
+        raise HTTPException(400, "no contacts to call")
+
+    camp_id = uuid.uuid4().hex[:8]
+    _CAMPAIGNS[camp_id] = {
+        "id": camp_id,
+        "status": "pending",
+        "total": len(chosen),
+        "placed": 0,
+        "delay": payload.delay_seconds,
+        "limit": payload.limit,
+        "log": [],
+        "cancel": False,
+    }
+    bg.add_task(_run_campaign, camp_id, chosen,
+                payload.delay_seconds, payload.limit, payload.skip_done)
+    return _CAMPAIGNS[camp_id]
+
+
+@router.get("/campaigns")
+def list_campaigns() -> list[dict]:
+    return list(_CAMPAIGNS.values())
+
+
+@router.get("/campaigns/{camp_id}")
+def get_campaign(camp_id: str) -> dict:
+    if camp_id not in _CAMPAIGNS:
+        raise HTTPException(404, "campaign not found")
+    return _CAMPAIGNS[camp_id]
+
+
+@router.post("/campaigns/{camp_id}/cancel")
+def cancel_campaign(camp_id: str) -> dict:
+    if camp_id not in _CAMPAIGNS:
+        raise HTTPException(404, "campaign not found")
+    _CAMPAIGNS[camp_id]["cancel"] = True
+    return _CAMPAIGNS[camp_id]
+
+
+# ---------------------------- results --------------------------------------
+
+@router.get("/results/summary")
+def results_summary() -> dict:
+    return db.summary_counts()
+
+
+@router.get("/results/export.csv")
+def export_csv() -> Response:
+    rows = db.all_results()
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["contact_id", "name", "phone", "status", "sentiment",
+                "remark", "started_at", "ended_at", "call_sid"])
+    for r in rows:
+        w.writerow([r.get("contact_id"), r.get("name"), r.get("phone"),
+                    r.get("status"), r.get("sentiment"), r.get("remark"),
+                    r.get("started_at"), r.get("ended_at"), r.get("call_sid")])
+    return Response(content=out.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="results.csv"'})
+
+
+# ---------------------------- live stream (SSE) ----------------------------
+
+async def _sse_stream():
+    """Server-Sent Events: push dashboard snapshot every ~2 seconds."""
+    yield ": connected\n\n"
+    while True:
+        payload = {
+            "summary": db.summary_counts(),
+            "active": db.active_calls(),
+            "campaigns": [
+                {"id": c["id"], "status": c["status"], "placed": c["placed"],
+                 "total": c["total"]}
+                for c in _CAMPAIGNS.values()
+            ],
+        }
+        yield f"data: {json.dumps(payload)}\n\n"
+        await asyncio.sleep(2)
+
+
+@router.get("/stream")
+async def stream() -> StreamingResponse:
+    return StreamingResponse(_sse_stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})

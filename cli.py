@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """IITM Automated Call System — command-line interface.
 
+Copyright (c) 2026 Rohit Jangra. All rights reserved.
+
   python cli.py serve
   python cli.py call --to +9198XXXXXXXX --name "Test Student"
   python cli.py campaign --csv data/contacts.csv --limit 5 --delay 45
@@ -8,6 +10,8 @@
   python cli.py contacts
   python cli.py transcript <call_sid>
 """
+__author__ = "Rohit Jangra"
+__copyright__ = "Copyright (c) 2026 Rohit Jangra"
 import csv
 import sys
 import time

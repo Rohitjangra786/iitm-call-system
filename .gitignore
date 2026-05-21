@@ -5,3 +5,19 @@ __pycache__/
 calls.db
 out/
 *.log
+
+# Frontend
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/.vite/
+web/.vercel/
+node_modules/
+package-lock.json
+
+# Editor / OS
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

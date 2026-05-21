@@ -1,0 +1,6 @@
+IITM Automated Call System
+Copyright (c) 2026 Rohit Jangra
+All rights reserved.
+
+This project, including the Python backend (caller/, cli.py, iitm_facts.py)
+and the React PWA dashboard (web/), is authored and maintained by Rohit Jangra.
