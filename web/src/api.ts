@@ -69,10 +69,27 @@ export const api = {
   summary: () => req<Summary>('/api/results/summary'),
   exportCsvUrl: () => `${BASE}/api/results/export.csv`,
 
-  // agent chat (text)
+  // agent chat (text) — stateless, not logged
   chat: (messages: ChatMessage[], student_name = 'there') =>
     req<AgentTurn>('/api/agent/chat', {
       method: 'POST',
       body: JSON.stringify({ messages, student_name }),
+    }),
+
+  // agent chat tagged with a session — logged to calls.db and shows in Calls tab
+  chatSession: (
+    messages: ChatMessage[],
+    opts: { student_name?: string; session_id: string; contact_id?: string; phone?: string },
+  ) =>
+    req<AgentTurn>('/api/agent/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, ...opts }),
+    }),
+
+  // outreach
+  makeTalkLink: (contact_id: number, base_url: string) =>
+    req<{ url: string; wa_text: string; contact: Contact }>('/api/outreach/link', {
+      method: 'POST',
+      body: JSON.stringify({ contact_id, base_url }),
     }),
 }
