@@ -1,11 +1,11 @@
 {
-  "name": "iitm-call-pwa",
+  "name": "siksasarovar-pwa",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "author": "Rohit Jangra",
   "license": "UNLICENSED",
-  "description": "IITM automated calling dashboard — built by Rohit Jangra",
+  "description": "SiksaSarovar — AI admissions outreach by Rohit Jangra",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

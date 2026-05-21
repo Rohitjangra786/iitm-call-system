@@ -37,8 +37,8 @@ export default function App() {
           <div className="flex items-center gap-2">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-lg">📞</div>
             <div>
-              <div className="text-sm font-semibold">IITM Call System</div>
-              <div className="text-[11px] text-slate-400">by Rohit Jangra · automated outbound calling</div>
+              <div className="text-sm font-semibold">SiksaSarovar</div>
+              <div className="text-[11px] text-slate-400">by Rohit Jangra · AI admissions outreach</div>
             </div>
           </div>
         </div>
@@ -56,7 +56,7 @@ export default function App() {
           <Route path="/outreach" element={<Outreach />} />
         </Routes>
         <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-[11px] text-slate-500">
-          © {new Date().getFullYear()} Rohit Jangra · IITM Call System · All rights reserved
+          © {new Date().getFullYear()} Rohit Jangra · SiksaSarovar · All rights reserved
         </footer>
       </main>
 

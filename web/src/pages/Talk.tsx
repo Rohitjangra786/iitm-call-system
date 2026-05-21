@@ -158,7 +158,7 @@ export default function Talk() {
       </main>
 
       <footer className="pb-3 text-center text-[10px] text-slate-600">
-        © Rohit Jangra · IITM Call System
+        © Rohit Jangra · SiksaSarovar
       </footer>
     </div>
   )

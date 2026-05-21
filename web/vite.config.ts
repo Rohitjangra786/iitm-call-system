@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon.svg'],
       manifest: {
-        name: 'IITM Call System',
-        short_name: 'IITM Calls',
-        description: 'IITM automated calling dashboard — by Rohit Jangra',
+        name: 'SiksaSarovar',
+        short_name: 'SiksaSarovar',
+        description: 'SiksaSarovar — AI admissions outreach by Rohit Jangra',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
