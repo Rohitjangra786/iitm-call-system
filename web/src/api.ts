@@ -3,6 +3,7 @@ import type {
 } from './types'
 import { localStore, normPhone } from './localStore'
 import { parseCsv, rowToContact } from './parseCsv'
+import { buildOutreachMessage } from './helplines'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
@@ -51,19 +52,16 @@ async function probeOnline(): Promise<boolean> {
 
 export function invalidateOnline() { onlineCache = null }
 
-/** Build the personalised /talk?to=&name=&phone= link entirely client-side. */
-export function buildTalkLink(c: Contact, baseUrl: string): { url: string; wa_text: string } {
+/** Build the personalised /talk?to=&name=&phone= link entirely client-side,
+ *  along with the full WhatsApp/SMS message body (greeting + url + helplines). */
+export function buildTalkLink(c: Contact, baseUrl: string): { url: string; message: string } {
   const qs = new URLSearchParams({
     to: String(c.id),
     name: c.name,
     phone: c.phone,
   }).toString()
-  return {
-    url: `${baseUrl.replace(/\/$/, '')}/talk?${qs}`,
-    wa_text: `Hi ${c.name}, this is IITM admissions team. ` +
-             `You can have a quick chat with our AI counselor Anya about ` +
-             `the BCA programme. Tap here:`,
-  }
+  const url = `${baseUrl.replace(/\/$/, '')}/talk?${qs}`
+  return { url, message: buildOutreachMessage(c.name, url) }
 }
 
 const localContact = (c: Contact): Contact => ({ ...c, do_not_call: c.do_not_call ? 1 : 0 })
@@ -207,7 +205,7 @@ export const api = {
     const c = localStore.get(contact_id)
       ?? (await api.contacts()).find(x => x.id === contact_id)
     if (!c) throw new Error('contact not found')
-    const { url, wa_text } = buildTalkLink(c, base_url)
-    return { url, wa_text, contact: c }
+    const { url, message } = buildTalkLink(c, base_url)
+    return { url, message, contact: c }
   },
 }
