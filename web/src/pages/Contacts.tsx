@@ -88,6 +88,20 @@ export default function Contacts() {
     await reload()
   }
 
+  const onClearAll = async () => {
+    if (items.length === 0) return
+    if (!confirm(`Delete ALL ${items.length} contacts? This cannot be undone.`)) return
+    if (!confirm('Are you sure? This will remove every contact.')) return
+    setBusy(true); setError(null)
+    try {
+      for (const c of items) {
+        try { await api.deleteContact(c.id) } catch { /* keep going */ }
+      }
+      await reload()
+    } catch (e: any) { setError(e.message) }
+    finally { setBusy(false) }
+  }
+
   const onToggleDnc = async (c: Contact) => {
     await api.updateContact(c.id, { do_not_call: !c.do_not_call })
     await reload()
@@ -153,6 +167,7 @@ export default function Contacts() {
             <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>Import CSV</Button>
             <Button variant="ghost" onClick={onSeed} disabled={busy}>Seed</Button>
             <Button variant="ghost" onClick={onExport} disabled={items.length === 0}>Export CSV</Button>
+            <Button variant="danger" onClick={onClearAll} disabled={busy || items.length === 0}>Clear all</Button>
           </div>
         </form>
       </Card>
